@@ -1,0 +1,243 @@
+{
+  "name": "Akademik",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.chatInput;\n\n// Ambil kata kunci antara kutip\nconst queryMatch = text.match(/kata_kunci=\"([^\"]+)\"/);\n\nreturn [{\n  json: {\n    query: queryMatch ? queryMatch[1] : \"smart city infrastructure\"\n  }\n}];"
+      },
+      "id": "0dfd29a2-bca1-4f62-af64-b53abab2eeae",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet text = \"\";\n\nitems.forEach((batch) => {\n  const results = batch.json?.organic_results || [];\n\n  results.forEach((res, index) => {\n    const title = res.title || \"Tanpa Judul\";\n    const snippet = res.snippet || \"\";\n    const source = res.link || \"\";\n    const pubInfo = res.publication_info?.summary || \"\";\n\n    text += `${index + 1}. Judul: ${title}\\n`;\n    if (pubInfo) text += `Publikasi: ${pubInfo}\\n`;\n    if (snippet) text += `Abstrak: ${snippet}\\n`;\n    if (source) text += `Sumber: ${source}\\n`;\n    text += `\\n`;\n  });\n});\n\nreturn [{ json: { text } }];"
+      },
+      "id": "71896a01-9b7b-4283-8d9b-abe24d5b623e",
+      "name": "Prepare Batch Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Kamu adalah asisten akademik multidisiplin.  \nGunakan data Google Scholar berikut sebagai sumber utama literatur dan tren riset:  \n\n**📚 Data Google Scholar:**  \n`{{$json[\"text\"]}}`  \n\nBerdasarkan data tersebut, buatkan draft ide skripsi/thesis dengan format berikut (gunakan emoji pada setiap judul bagian):  \n\n1. **🎓 Judul Skripsi/Thesis**  \n   - Tulis 3 alternatif judul yang jelas, spesifik, akademik. Sertakan objek penelitian, metode, dan ruang lingkup.  \n\n2. **📖 Latar Belakang (2025)**  \n   - Jelaskan relevansi topik dengan tren, isu global, kebijakan, kebutuhan industri, atau perkembangan teknologi/ilmu terkini.  \n   - Hubungkan dengan temuan & sentimen pada data Google Scholar di atas.  \n\n3. **💡 Why It Matters**  \n   - Uraikan urgensi/implikasi penelitian terhadap masyarakat, akademik, bisnis, atau kebijakan.  \n\n4. **🛠️ Potential Actions (opsional)**  \n   - Sebutkan 2–3 langkah penelitian yang mungkin dilakukan.  \n   - Untuk tiap langkah sertakan: *Expected Impact, Requirements, Risks.*  \n\n5. **🔬 Recommended Approach (Metodologi Penelitian)**  \n   - Pilih metode akademik paling sesuai (misalnya machine learning, analisis data, studi kasus, dsb).  \n\n6. **📊 Success Metrics**  \n   - Tentukan indikator keberhasilan yang terukur (akurasi model, validitas hasil, jumlah responden, kualitas analisis, dsb).  \n\n7. **📌 Position Analysis**  \n   - Posisikan ide penelitian dalam kuadran *Uniqueness vs Value* (Category King / Tech Novelty / Commodity Play / Low Impact).  \n   - Jelaskan alasannya.  \n\n8. **🔗 Referensi Jurnal**  \n   - Cantumkan minimal 10 referensi jurnal internasional relevan (utamakan 5 tahun terakhir).  \n   - Sertakan link dari data Google Scholar berikut:  \n     `{{$json[\"text\"]}}`  \n\nGunakan bahasa akademik yang ringkas, padat, dan sesuai batasan panjang (≤4096 karakter untuk dikirim via Telegram). \n",
+        "batching": {}
+      },
+      "id": "98631c57-346a-48c1-85b9-0bc300061efa",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        560,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "your_chat_id_here",
+        "text": "={{ $json.part }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "102395b1-fe9f-4995-84ac-17bb1fc124fc",
+      "name": "Telegram Send",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        340
+      ],
+      "webhookId": "9540b9d9-7d15-4eac-b66e-af7da7455e72",
+      "credentials": {
+        "telegramApi": {
+          "id": "LR7Xqf9AHDdfWIvH",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "google_scholar",
+        "q": "={{$json[\"query\"]}}",
+        "additionalFields": {
+          "scisbd": 1
+        },
+        "requestOptions": {}
+      },
+      "id": "2bcc78f4-d638-4c9e-91c5-d68acf8eecd9",
+      "name": "SerpApi1",
+      "type": "n8n-nodes-serpapi.serpApi",
+      "typeVersion": 1,
+      "position": [
+        100,
+        340
+      ],
+      "credentials": {
+        "serpApi": {
+          "id": "p6aqx6xFzdr93bF9",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        660,
+        560
+      ],
+      "id": "5cb9a68b-734a-4d49-8f87-ad3c3fe96880",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Gqttz8kazdLBGVnY",
+          "name": "OpenRouter account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋",
+        "options": {
+          "inputPlaceholder": "Type your message here..",
+          "responseMode": "lastNode",
+          "showWelcomeScreen": false,
+          "subtitle": "This is for demo purposes. Try me out !",
+          "title": "Your first AI Agent 🚀",
+          "customCss": "/* === THEME OVERRIDE: n8n Glass & Glow (Revised) === */\n\n/*\n  This theme is built upon the default n8n chat CSS variables.\n  We'll use your desired branding and layout, and then add\n  the \"glass\" effect using a semi-transparent background\n  and a backdrop-filter on the main window class.\n*/\n\n:root {\n  /* --- 1. CORE BRANDING & FONTS --- */\n  /* Your choices for font and primary color are applied here. */\n  --chat--font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  --chat--color-primary: #EA4B71; /* n8n Red */\n  --chat--color-primary-shade-50: #D93A60;\n  --chat--color-primary-shade-100: #C82A50;\n  --chat--color-secondary: #20b69e; /* Kept default secondary for things like file uploads */\n  --chat--color-secondary-shade-50: #1ca08a;\n  --chat--color-white: #ffffff;\n  --chat--color-light: #f2f4f8;\n  --chat--color-dark: #1F2937; /* Darker, more modern text color */\n  --chat--color-disabled: #9CA3AF;\n  --chat--color-typing: #404040;\n\n  /* --- 2. WINDOW & LAYOUT --- */\n  /* Your dimensions and rounded corners. The actual glass effect is handled in the class override below. */\n  --chat--window--width: 430px;\n  --chat--window--height: 80vh;\n  --chat--window--border-radius: 16px;\n  --chat--window--border: 1px solid rgba(255, 255, 255, 0.3);\n  --chat--spacing: 1rem; /* 16px base spacing */\n  --chat--window--z-index: 9999;\n  --chat--window--bottom: var(--chat--spacing);\n  --chat--window--right: var(--chat--spacing);\n  --chat--window--margin-bottom: var(--chat--spacing);\n\n  /* --- 3. GLASSMORPHISM BACKGROUNDS --- */\n  /* We make the main sections transparent to let the glass window show through. */\n  --chat--header--background: transparent;\n  --chat--body--background: transparent;\n  --chat--footer--background: transparent;\n\n  /* --- 4. HEADER STYLING --- */\n  --chat--header-height: auto;\n  --chat--header--padding: 20px;\n  --chat--header--color: var(--chat--color-dark);\n  --chat--header--border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Subtle divider */\n  --chat--heading--font-size: 1.5rem;\n  --chat--subtitle--font-size: 0.875rem;\n  --chat--subtitle--line-height: 1.4;\n  --chat--close--button--color-hover: var(--chat--color-primary);\n\n  /* --- 5. MESSAGE BUBBLES --- */\n  --chat--message--font-size: 0.875rem;\n  --chat--message--padding: 12px 16px;\n  --chat--message--border-radius: 12px;\n  --chat--message-line-height: 1.6;\n  --chat--message--margin-bottom: calc(var(--chat--spacing) * 0.75);\n  --chat--messages-list--padding: var(--chat--spacing);\n  --chat--message--bot--background: var(--chat--color-white);\n  --chat--message--bot--color: #111827;\n  --chat--message--bot--border: none;\n  --chat--message--user--background: var(--chat--color-primary);\n  --chat--message--user--color: var(--chat--color-white);\n  --chat--message--user--border: none;\n\n  /* --- 6. INPUT AREA --- */\n  --chat--textarea--height: 50px;\n  --chat--textarea--max-height: 10rem;\n  --chat--input--font-size: 0.9rem;\n  --chat--input--border: 0;\n  --chat--input--border-radius: 12px; /* Rounded input field */\n  --chat--input--padding: 12px 16px;\n  --chat--input--background: rgba(255, 255, 255, 0.5); /* Semi-transparent input */\n  --chat--input--text-color: #111827;\n  --chat--input--line-height: 1.5;\n  --chat--input--border-active: 0;\n\n  /* --- 7. SEND & FILE BUTTONS --- */\n  --chat--input--send--button--background: transparent;\n  --chat--input--send--button--color: var(--chat--color-primary);\n  --chat--input--send--button--background-hover: transparent;\n  --chat--input--send--button--color-hover: var(--chat--color-primary-shade-50);\n  --chat--input--file--button--background: transparent;\n  --chat--input--file--button--color: var(--chat--color-secondary);\n  --chat--input--file--button--background-hover: transparent;\n  --chat--input--file--button--color-hover: var(--chat--color-secondary-shade-50);\n\n  /* --- 8. TOGGLE BUTTON & OTHERS --- */\n  /* Using your primary brand color for the main toggle button */\n  --chat--toggle--size: 64px;\n  --chat--toggle--width: var(--chat--toggle--size);\n  --chat--toggle--height: var(--chat--toggle--size);\n  --chat--toggle--border-radius: 50%;\n  --chat--toggle--background: var(--chat--color-primary);\n  --chat--toggle--hover--background: var(--chat--color-primary-shade-50);\n  --chat--toggle--active--background: var(--chat--color-primary-shade-100);\n  --chat--toggle--color: var(--chat--color-white);\n}\n\n/* === CLASS OVERRIDES === */\n/*\n  These are essential for effects that CSS variables can't control,\n  like the glass blur, shadows, and max-height.\n*/\n\n.chat-window {\n  /* This is the magic for the glass effect! */\n  background-color: rgba(249, 243, 245, 0.6); /* A semi-transparent background color */\n  backdrop-filter: blur(20px);\n  -webkit-backdrop-filter: blur(20px); /* For Safari compatibility */\n\n  /* A subtle shadow helps lift the window off the page */\n  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);\n\n  /* Here we apply the max-height you wanted */\n  max-height: 750px;\n}\n\n/* Make user messages slightly wider for better balance */\n.chat-message.is-user {\n\tmax-width: 70%;\n}\n\n.chat-message.is-bot {\n\tmax-width: 80%;\n}\n\n/* Add a subtle glow to messages on hover */\n.chat-message {\n    transition: transform 0.2s ease, box-shadow 0.2s ease;\n}\n.chat-message:hover {\n    transform: translateY(-2px);\n    box-shadow: 0 0 25px 0 rgba(234, 75, 113, 0.2);\n}\n\n/* === PAGE BACKGROUND === */\n/* Your dotted background to simulate the n8n canvas. Perfect as is! */\nbody {\n    background-color: #FDFBFF;\n    background-image:\n        radial-gradient(circle at 1px 1px, rgba(0,0,0,0.07) 1px, transparent 0),\n        linear-gradient(135deg, #F9F3F5 0%, #EFF3FB 100%);\n    background-size: 25px 25px, 100% 100%;\n}"
+        }
+      },
+      "id": "72b7edd1-0d98-43dc-9dda-04ba4dd330e5",
+      "cid": "Ikx1Y2FzIFBleXJpbiI",
+      "name": "Example Chat Window",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "creator": "Lucas Peyrin",
+      "position": [
+        -320,
+        340
+      ],
+      "webhookId": "499666c3-d807-4bb7-8195-43932f64a91f",
+      "typeVersion": 1.1,
+      "notes": "© 2025 Lucas Peyrin"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text || \"\";\nconst maxLength = 3500; // biar aman <4096\nconst parts = [];\nfor (let i = 0; i < text.length; i += maxLength) {\n  parts.push(text.slice(i, i + maxLength));\n}\nreturn parts.map((p, idx) => ({\n  json: { part: `📄 Bagian ${idx + 1}/${parts.length}\\n\\n${p}` }\n}));"
+      },
+      "id": "07fb15ce-a2cc-4fa2-922e-a31ac34a7ea8",
+      "name": "Split Message1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        340
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "SerpApi1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Batch Prompt": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Split Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpApi1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Batch Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Example Chat Window": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Message1": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5cf4f5c3-8391-4e49-b171-7a977cb3fc0c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b0aa00a16ba8819770e2a41e925547640b26075c40032e7542ffecbe09719fe"
+  },
+  "id": "5Mz2E6CQhlqFI274",
+  "tags": []
+}
